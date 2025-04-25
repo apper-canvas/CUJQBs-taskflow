@@ -14,32 +14,13 @@ import {
   Edit
 } from "lucide-react";
 import { format } from "date-fns";
+import taskService from "../services/taskService";
 
 const MainFeature = () => {
   // Task state
-  const [tasks, setTasks] = useState(() => {
-    const savedTasks = localStorage.getItem("tasks");
-    return savedTasks ? JSON.parse(savedTasks) : [
-      {
-        id: "1",
-        title: "Complete project proposal",
-        description: "Finish the draft and send for review",
-        dueDate: new Date(Date.now() + 86400000 * 2).toISOString(), // 2 days from now
-        priority: "high",
-        completed: false,
-        categoryId: "work"
-      },
-      {
-        id: "2",
-        title: "Grocery shopping",
-        description: "Buy fruits, vegetables, and milk",
-        dueDate: new Date(Date.now() + 86400000).toISOString(), // 1 day from now
-        priority: "medium",
-        completed: false,
-        categoryId: "personal"
-      }
-    ];
-  });
+  const [tasks, setTasks] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Form state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -56,10 +37,25 @@ const MainFeature = () => {
   const [filter, setFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("dueDate");
 
-  // Save tasks to localStorage whenever they change
+  // Fetch tasks on component mount
   useEffect(() => {
-    localStorage.setItem("tasks", JSON.stringify(tasks));
-  }, [tasks]);
+    fetchTasks();
+  }, []);
+
+  // Fetch tasks from the backend
+  const fetchTasks = async () => {
+    try {
+      setIsLoading(true);
+      const fetchedTasks = await taskService.fetchTasks();
+      setTasks(fetchedTasks);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching tasks:", err);
+      setError("Failed to load tasks. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Handle form input changes
   const handleInputChange = (e) => {
@@ -99,48 +95,68 @@ const MainFeature = () => {
   };
 
   // Submit the form
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (formData.title.trim() === "") return;
     
-    if (editingTask) {
-      // Update existing task
-      setTasks(tasks.map(task => 
-        task.id === editingTask.id 
-          ? { 
-              ...task, 
-              ...formData, 
-              dueDate: new Date(formData.dueDate).toISOString() 
-            } 
-          : task
-      ));
-    } else {
-      // Create new task
-      const newTask = {
-        id: Date.now().toString(),
-        ...formData,
-        dueDate: new Date(formData.dueDate).toISOString(),
-        completed: false
-      };
-      setTasks([...tasks, newTask]);
+    try {
+      if (editingTask) {
+        // Update existing task
+        const updatedTask = await taskService.updateTask(editingTask.id, {
+          ...formData,
+          dueDate: new Date(formData.dueDate).toISOString()
+        });
+        
+        setTasks(tasks.map(task => 
+          task.id === editingTask.id ? updatedTask : task
+        ));
+      } else {
+        // Create new task
+        const newTask = await taskService.createTask({
+          ...formData,
+          dueDate: new Date(formData.dueDate).toISOString(),
+          completed: false
+        });
+        
+        setTasks([...tasks, newTask]);
+      }
+      
+      setIsFormOpen(false);
+    } catch (err) {
+      console.error("Error saving task:", err);
+      alert("Failed to save task. Please try again.");
     }
-    
-    setIsFormOpen(false);
   };
 
   // Toggle task completion
-  const toggleTaskCompletion = (taskId) => {
-    setTasks(tasks.map(task => 
-      task.id === taskId 
-        ? { ...task, completed: !task.completed } 
-        : task
-    ));
+  const toggleTaskCompletion = async (taskId) => {
+    try {
+      const task = tasks.find(task => task.id === taskId);
+      const newCompletedState = !task.completed;
+      
+      await taskService.toggleTaskCompletion(taskId, newCompletedState);
+      
+      setTasks(tasks.map(task => 
+        task.id === taskId 
+          ? { ...task, completed: newCompletedState } 
+          : task
+      ));
+    } catch (err) {
+      console.error("Error toggling task completion:", err);
+      alert("Failed to update task status. Please try again.");
+    }
   };
 
   // Delete a task
-  const deleteTask = (taskId) => {
-    setTasks(tasks.filter(task => task.id !== taskId));
+  const deleteTask = async (taskId) => {
+    try {
+      await taskService.deleteTask(taskId);
+      setTasks(tasks.filter(task => task.id !== taskId));
+    } catch (err) {
+      console.error("Error deleting task:", err);
+      alert("Failed to delete task. Please try again.");
+    }
   };
 
   // Filter and sort tasks
@@ -192,6 +208,30 @@ const MainFeature = () => {
       </span>
     );
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="card p-6 text-center">
+        <p className="text-accent mb-4">{error}</p>
+        <button 
+          onClick={fetchTasks}
+          className="btn btn-primary"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div>

@@ -1,16 +1,54 @@
 import { useState, useEffect } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import { Sun, Moon } from "lucide-react";
 import { motion } from "framer-motion";
+import { setUser, setLoading } from "./store/userSlice";
 import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import ProtectedRoute from "./components/ProtectedRoute";
+import UserMenu from "./components/UserMenu";
+import apperService from "./services/apperService";
 
 function App() {
+  const dispatch = useDispatch();
+  const { isAuthenticated, isLoading } = useSelector((state) => state.user);
+  
   const [darkMode, setDarkMode] = useState(() => {
     const savedMode = localStorage.getItem("darkMode");
     return savedMode ? JSON.parse(savedMode) : 
       window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
+
+  // Initialize ApperClient and check if user is already authenticated
+  useEffect(() => {
+    const initializeAppState = async () => {
+      try {
+        const client = apperService.initialize();
+        if (client) {
+          // Check if there's an active session
+          const user = await client.getSessionInfo();
+          if (user) {
+            dispatch(setUser(user));
+          } else {
+            dispatch(setLoading(false));
+          }
+        } else {
+          dispatch(setLoading(false));
+        }
+      } catch (error) {
+        console.error("Error initializing app:", error);
+        dispatch(setLoading(false));
+      }
+    };
+
+    initializeAppState();
+  }, [dispatch]);
 
   useEffect(() => {
     if (darkMode) {
@@ -27,7 +65,9 @@ function App() {
 
   return (
     <div className="min-h-screen">
-      <header className="fixed top-0 right-0 z-50 p-4">
+      <header className="fixed top-0 right-0 z-50 p-4 flex items-center gap-4">
+        {isAuthenticated && <UserMenu />}
+        
         <motion.button
           onClick={toggleDarkMode}
           className="p-2 rounded-full neu-light dark:neu-dark"
@@ -44,10 +84,45 @@ function App() {
       </header>
 
       <main className="container mx-auto px-4 pt-16 pb-8">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        {isLoading ? (
+          <div className="flex justify-center items-center h-screen">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        ) : (
+          <Routes>
+            <Route 
+              path="/" 
+              element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Home />} 
+            />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/settings" 
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        )}
       </main>
 
       <footer className="py-4 text-center text-surface-500 text-sm">

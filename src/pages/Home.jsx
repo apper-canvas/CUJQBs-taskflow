@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { PlusCircle, LayoutDashboard, ListTodo, Settings } from "lucide-react";
+import { PlusCircle, LayoutDashboard, ListTodo, Settings, UserCircle, LogIn } from "lucide-react";
 import MainFeature from "../components/MainFeature";
 
 const Home = () => {
@@ -50,6 +51,14 @@ const Home = () => {
                 <p className="text-surface-600 dark:text-surface-300 mb-6">
                   Your personal task management solution
                 </p>
+                <div className="flex gap-4 justify-center">
+                  <Link to="/login" className="btn btn-primary">
+                    Log In
+                  </Link>
+                  <Link to="/signup" className="btn btn-outline">
+                    Sign Up
+                  </Link>
+                </div>
               </motion.div>
             </motion.div>
           </motion.div>
@@ -112,11 +121,15 @@ const Home = () => {
               })}
             </nav>
             
-            <div className="pt-4 border-t border-surface-200 dark:border-surface-700">
-              <button className="flex items-center w-full p-3 rounded-lg text-primary hover:bg-primary/10 transition-all">
-                <PlusCircle className="w-5 h-5 mr-3" />
-                <span className="font-medium">New Category</span>
-              </button>
+            <div className="pt-4 border-t border-surface-200 dark:border-surface-700 space-y-2">
+              <Link to="/login" className="flex items-center w-full p-3 rounded-lg text-primary hover:bg-primary/10 transition-all">
+                <LogIn className="w-5 h-5 mr-3" />
+                <span className="font-medium">Login</span>
+              </Link>
+              <Link to="/signup" className="flex items-center w-full p-3 rounded-lg text-primary hover:bg-primary/10 transition-all">
+                <UserCircle className="w-5 h-5 mr-3" />
+                <span className="font-medium">Sign Up</span>
+              </Link>
             </div>
           </div>
         </motion.aside>
@@ -127,6 +140,28 @@ const Home = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
         >
+          <div className="card mb-6 bg-primary/5 border border-primary/20 p-4">
+            <div className="flex items-start gap-4">
+              <div className="bg-primary/20 p-3 rounded-full">
+                <LogIn className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-lg font-medium mb-1">Create an Account</h3>
+                <p className="text-surface-600 dark:text-surface-400 mb-3">
+                  Sign up to save your tasks and access them from anywhere.
+                </p>
+                <div className="flex gap-3">
+                  <Link to="/signup" className="btn btn-primary btn-sm">
+                    Sign Up
+                  </Link>
+                  <Link to="/login" className="btn btn-outline btn-sm">
+                    Log In
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+          
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
